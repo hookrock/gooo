@@ -10,8 +10,8 @@ type HandlerFunc func(c *Context)
 
 type Engine struct {
 	*RouterGroup
-	router         *router
-	groups         []*RouterGroup
+	router *router
+	groups []*RouterGroup
 }
 
 func New() *Engine {
@@ -22,8 +22,6 @@ func New() *Engine {
 
 	return engine
 }
-
-
 
 func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := newContext(w, r)
@@ -58,6 +56,7 @@ func Default() *Engine {
 	return engine
 }
 
-func (engine *Engine) Run(addr string) (err error) {
-	return http.ListenAndServe(addr, engine)
+func (engine *Engine) Run(addr ...string) (err error) {
+	port := resolveAddress(addr)
+	return http.ListenAndServe(port, engine)
 }
