@@ -4,6 +4,7 @@ import (
 	"os"
 )
 
+// ResolveAddress resolves the address to listen on.
 func resolveAddress(addr []string) string {
 	switch len(addr) {
 	case 0:
