@@ -26,6 +26,8 @@ type Context struct {
 	aborted  bool          // 是否已终止
 	// 响应信息
 	StatusCode int
+
+	engine *Engine
 }
 
 // 构造函数
@@ -91,27 +93,43 @@ func (c *Context) GetParam(key string) string {
 	}
 }
 
-// 响应控制方法
+// 设置响应头
+func (c *Context) SetHeader(key, value string) {
+	c.Writer.Header().Set(key, value)
+}
+
+// 设置响应头
+func (c *Context) SetContentType(value string) {
+	c.SetHeader("Content-Type", value)
+}
+
+// 获取响应头
+func (c *Context) GetContentType(name string) string {
+	if name == "" {
+		name = "Content-Type"
+	}
+	return c.Writer.Header().Get(name)
+}
+
+// 设置响应状态码
 func (c *Context) Status(code int) {
 	c.StatusCode = code
 	c.Writer.WriteHeader(code)
 }
 
-func (c *Context) SetHeader(key, value string) {
-	c.Writer.Header().Set(key, value)
+// 获取响应状态码
+func (c *Context) GetStatusCode() int {
+	return c.StatusCode
 }
 
-func (c *Context) SetContentType(value string) {
-	c.SetHeader("Content-Type", value)
-}
-
-// 响应格式化方法
+// 设置响应内容 String
 func (c *Context) String(code int, format string, values ...interface{}) {
 	c.SetContentType("text/plain")
 	c.Status(code)
 	c.Writer.Write([]byte(fmt.Sprintf(format, values...)))
 }
 
+// 设置响应内容 Json
 func (c *Context) JSON(code int, obj interface{}) {
 	c.SetContentType("application/json")
 	c.Status(code)
@@ -121,11 +139,23 @@ func (c *Context) JSON(code int, obj interface{}) {
 	}
 }
 
+// // 设置响应内容 XML
+// func (c *Context) XML(code int, obj interface{}) {
+// 	c.SetContentType("application/xml")
+// 	c.Status(code)
+// 	enc := xml.NewEncoder(c.Writer)
+// 	if err := enc.Encode(obj); err != nil {
+// 		http.Error(c.Writer, err.Error(), 500)
+// 	}
+// }
+
+// 设置响应内容 Data
 func (c *Context) Data(code int, data []byte) {
 	c.Status(code)
 	c.Writer.Write(data)
 }
 
+// 设置响应内容 HTML
 func (c *Context) HTML(code int, html string) {
 	c.SetContentType("text/html")
 	c.Status(code)
@@ -134,6 +164,37 @@ func (c *Context) HTML(code int, html string) {
 	}
 }
 
+// 设置调试信息
+func (c *Context) debugInjectHTML(msg string) {
+	// 检查响应是否为 HTML 类型（可以根据实际需求扩展）
+	if c.GetContentType("Content-Type") == "text/html" {
+		// 构造调试面板的 HTML 内容
+		debugHTML := fmt.Sprintf(`
+			<div style="position:fixed;bottom:0;left:0;width:100%%;background:#000;color:#fff;font-family:monospace;padding:10px;z-index:9999;">
+				<pre>%s</pre>
+			</div>
+		`, msg)
+
+		// 修改原始 HTML 内容（假设你已经缓存了原始响应）
+		c.Writer.Write([]byte(debugHTML))
+	}
+}
+
+// 在调试模式下向网页端输出调试信息
+// func (c *Context) debugPrint(format string, values ...interface{}) {
+// 	if os.Getenv("DEBUG") != "" || IsDebugMode() {
+// 		// 2. 构造调试信息
+// 		debugMsg := "[DEBUG] " + fmt.Sprintf(format, values...)
+
+// 		// 3. 输出到日志
+// 		log.Print(debugMsg)
+
+// 		// 4. 输出到网页端（仅在 HTML 响应中）
+// 		c.debugInjectHTML(debugMsg)
+// 	}
+// }
+
+// Fail 设置错误信息
 func (c *Context) Fail(code int, err string) {
 	c.index = len(c.handlers)
 	c.JSON(code, H{"message": err})
