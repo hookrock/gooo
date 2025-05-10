@@ -2,6 +2,7 @@ package gooo
 
 import (
 	"net/http"
+	"path/filepath"
 	"strings"
 )
 
@@ -10,21 +11,37 @@ type HandlerFunc func(c *Context)
 
 type Engine struct {
 	*RouterGroup
-	router *router
-	groups []*RouterGroup
+	router   *router
+	groups   []*RouterGroup
+	config   *Config
+	template *TemplateEngine // 替换原有字段
 }
 
 func New() *Engine {
 	engine := &Engine{
 		router: newRouter(),
+		config: &Config{
+			Root:         "/",
+			StaticPath:   "web/static",
+			TemplatePath: "web/templates",
+			Extension:    ".tmpl",
+		},
+		template: NewTemplateEngine(),
 	}
 	engine.RouterGroup = &RouterGroup{engine: engine}
-
+	// 加载静态文件
+	engine.Static("/static", engine.config.StaticPath)
+	// 加载模板
+	pattern := filepath.Join(engine.config.TemplatePath, "*"+engine.config.Extension)
+	if err := engine.template.Load(pattern); err != nil && IsDebugMode() {
+		DebugPrint("模板加载警告: %v", err) // 调试模式下打印警告
+	}
 	return engine
 }
 
 func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := newContext(w, r)
+	c.engine = engine
 
 	// 1. 收集所有中间件(全局+匹配路由组)
 	var handlers []HandlerFunc
