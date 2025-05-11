@@ -20,11 +20,21 @@ type Cache struct {
 }
 
 func NewCache() *Cache {
+	totalMemory, err := GetSystemMemory() // 获取系统总内存
+	if err != nil {
+		totalMemory = 2 * 1024 * 1024 * 1024 // 2GB
+	}
+	maxSize := int(float64(totalMemory) * 0.7)
 	return &Cache{
-		maxSize: 10000, // 默认缓存最大容量为10000
+		maxSize: maxSize,
 		list:    list.New(),
 		items:   make(map[string]*list.Element),
 	}
+}
+
+// SetMaxSize 设置缓存最大容量
+func (c *Cache) SetMaxSize(size int) {
+	c.maxSize = size
 }
 
 // SetCache 设置缓存
@@ -155,7 +165,7 @@ func (c *Cache) GetCacheAll() map[string]any {
 	for e := c.list.Front(); e != nil; {
 		count++
 		cacheItem := e.Value.(*CacheItem)
-		next := e.Next() // 提前获取下一个节点
+		next := e.Next()
 
 		if cacheItem.expiration < now {
 			c.list.Remove(e)
