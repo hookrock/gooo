@@ -209,16 +209,33 @@ func (m *SessionManager) RegenerateID(w http.ResponseWriter, oldID string) strin
 	newID, err := generateSessionID()
 	if err != nil {
 		http.Error(w, "Internal Server Error", 500)
-		return ""
-	}
-	if data, err := m.Store.Get(oldID); err == nil {
-		m.Store.Set(newID, data)
-		m.Store.Destroy(oldID)
+		return oldID // 返回旧ID避免nil
 	}
 
+	// 获取旧会话数据
+	data, err := m.Store.Get(oldID)
+	if err != nil {
+		return oldID // 如果旧会话不存在，直接返回旧ID
+	}
+
+	// 设置新会话并销毁旧会话
+	if err := m.Store.Set(newID, data); err != nil {
+		return oldID
+	}
+	if err := m.Store.Destroy(oldID); err != nil {
+		return oldID
+	}
+
+	// 设置新 Cookie
 	http.SetCookie(w, &http.Cookie{
-		Name:  SessionCookieName,
-		Value: newID,
+		Name:     SessionCookieName,
+		Value:    newID,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   m.CookieOpts.Secure,
+		SameSite: m.CookieOpts.SameSite,
+		MaxAge:   m.CookieOpts.MaxAge,
 	})
+
 	return newID
 }

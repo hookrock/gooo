@@ -8,10 +8,10 @@ import (
 
 // RouterGroup 路由组结构体
 type RouterGroup struct {
-	prefix string       // 路由组前缀
+	prefix      string        // 路由组前缀
 	middlewares []HandlerFunc // 中间件列表
-	parent *RouterGroup // 父路由组
-	engine *Engine      // 所有路由组共享一个Engine实例
+	parent      *RouterGroup  // 父路由组
+	engine      *Engine       // 所有路由组共享一个Engine实例
 }
 
 // Use 注册中间件
@@ -116,10 +116,10 @@ func (r *router) getRoute(method string, path string) (*trie, map[string]string)
 	matchedParts := parsePattern(node.part)
 	for i, part := range matchedParts {
 		if part[0] == ':' {
-			params[part[1:]] = parts[i]
+			params[part[1:]] = parts[i+1]
 		}
 		if part[0] == '*' && len(part) > 1 {
-			params[part[1:]] = strings.Join(parts[i:], "/")
+			params[part[1:]] = strings.Join(parts[i+1:], "/")
 			break
 		}
 	}

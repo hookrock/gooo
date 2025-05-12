@@ -57,24 +57,72 @@ func TestEngine_POST(t *testing.T) {
 }
 
 func TestEngine_Params(t *testing.T) {
-	t.Skip("TODO: Implement parameterized routes")
-
 	engine := New()
+
+	// 单参数
 	engine.GET("/user/:name", func(c *Context) {
 		name := c.Param("name")
 		c.String(http.StatusOK, "Hello "+name)
 	})
 
-	t.Run("route with params", func(t *testing.T) {
+	// 多参数
+	engine.GET("/:ok/:ada", func(c *Context) {
+		ok := c.Param("ok")
+		ada := c.Param("ada")
+		c.String(http.StatusOK, "ok: "+ok+", ada: "+ada)
+	})
+
+	// 混合路径
+	engine.GET("/:dad/o/jj/:fa", func(c *Context) {
+		dad := c.Param("dad")
+		fa := c.Param("fa")
+		c.String(http.StatusOK, "dad: "+dad+", fa: "+fa)
+	})
+
+	// 通配符
+	engine.GET("/:fafa/*tsfs", func(c *Context) {
+		fafa := c.Param("fafa")
+		tsfs := c.Param("tsfs")
+		c.String(http.StatusOK, "fafa: "+fafa+", tsfs: "+tsfs)
+	})
+
+	t.Run("single param", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/user/john", nil)
 		engine.ServeHTTP(w, req)
 
-		if w.Code != http.StatusOK {
-			t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
-		}
 		if body := w.Body.String(); body != "Hello john" {
-			t.Errorf("Expected body 'Hello john', got '%s'", body)
+			t.Errorf("Expected 'Hello john', got '%s'", body)
+		}
+	})
+
+	t.Run("multiple params", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/alice/bob", nil)
+		engine.ServeHTTP(w, req)
+
+		if body := w.Body.String(); body != "ok: alice, ada: bob" {
+			t.Errorf("Expected 'ok: alice, ada: bob', got '%s'", body)
+		}
+	})
+
+	t.Run("mixed path", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/mum/o/jj/dad", nil)
+		engine.ServeHTTP(w, req)
+
+		if body := w.Body.String(); body != "dad: mum, fa: dad" {
+			t.Errorf("Expected 'dad: mum, fa: dad', got '%s'", body)
+		}
+	})
+
+	t.Run("wildcard path", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/hello/world/this/is/a/test", nil)
+		engine.ServeHTTP(w, req)
+
+		if body := w.Body.String(); body != "fafa: hello, tsfs: world/this/is/a/test" {
+			t.Errorf("Expected 'fafa: hello, tsfs: world/this/is/a/test', got '%s'", body)
 		}
 	})
 }

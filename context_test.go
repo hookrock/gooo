@@ -181,7 +181,8 @@ func TestContext_GetParamWithDefault(t *testing.T) {
 			RawQuery: "name=test",
 		},
 	}
-	c := &Context{Req: req, Response: &Response{Writer: httptest.NewRecorder()}}
+	c := &Context{Req: req,
+		Method: req.Method, Response: &Response{Writer: httptest.NewRecorder()}}
 
 	if val := c.GetParamWithDefault("name", "default"); val != "test" {
 		t.Errorf("Should return query param value: %s", c.Query("name"))
@@ -197,27 +198,36 @@ func TestContext_SessionOperations(t *testing.T) {
 		Writer: w,
 		Req:    &http.Request{},
 		engine: &Engine{
-			sessionManager: NewSessionManager(NewMemoryStore(time.Minute)),
+			sessionManager: NewSessionManager(
+				NewMemoryStore(time.Minute),
+			),
 		},
 		Response: &Response{Writer: w},
 	}
 
-	// Test session creation
-	c.StartSession()
-	if c.Session == nil {
-		t.Error("Session should be initialized")
+	// 显式初始化 CookieOpts（可选）
+	c.engine.sessionManager.CookieOpts = CookieConfig{
+		Secure:   false,
+		SameSite: SameSiteMode,
+		MaxAge:   int(DefaultExpire.Seconds()),
 	}
 
-	// Test session renewal
+	// 测试会话创建
+	c.StartSession()
+	if c.Session == nil {
+		t.Error("会话应被初始化")
+	}
+
+	// 测试会话续期
 	oldID := c.SessionID
 	c.RenewSession()
 	if c.SessionID == oldID {
-		t.Error("Session ID should change after renewal")
+		t.Errorf("会话ID应在续期后改变，旧ID: %s, 新ID: %s", oldID, c.SessionID)
 	}
 
-	// Test session destruction
+	// 测试会话销毁
 	c.DestroySession()
 	if c.Session != nil {
-		t.Error("Session should be destroyed")
+		t.Error("会话应被销毁")
 	}
 }

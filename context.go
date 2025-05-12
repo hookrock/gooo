@@ -169,17 +169,23 @@ func (c *Context) Next() {
 }
 
 func (c *Context) StartSession() {
-	// 将会话初始化逻辑转移到上下文
-	if c.Session == nil {
-		mgr := c.engine.GetSessionManager()
-		c.Session, c.SessionID = mgr.Create(c.Writer, c.Req)
+	if c.engine == nil || c.engine.sessionManager == nil {
+		return
 	}
+	data, sessionID := c.engine.sessionManager.Create(c.Writer, c.Req)
+	c.Session = data
+	c.SessionID = sessionID // ✅ 初始化 SessionID
 }
 
 // 添加会话操作方法
 func (c *Context) RenewSession() {
-	if mgr := c.engine.GetSessionManager(); mgr != nil {
-		mgr.Renew(c.SessionID)
+	if c.engine == nil || c.engine.sessionManager == nil {
+		return
+	}
+	oldID := c.SessionID
+	newID := c.engine.sessionManager.RegenerateID(c.Writer, oldID)
+	if newID != "" {
+		c.SessionID = newID // ✅ 更新 SessionID
 	}
 }
 
