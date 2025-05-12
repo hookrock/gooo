@@ -45,13 +45,25 @@ func (e *TemplateEngine) Load(pattern string) error {
 
 // Static 静态文件服务（原Engine方法）
 func (e *Engine) Static(relativePath, root string) {
-	// 1. 添加路径规范化
+	if !IsDebugMode() && !isDirExist(root) {
+		DebugPrint("静态目录缺失警告: %s (生产环境继续运行)", root)
+		return
+	}
+
+	if _, err := os.Stat(root); os.IsNotExist(err) {
+		// 开发环境严格检查
+		if IsDebugMode() {
+			panic("静态文件根目录不存在: " + root)
+		}
+		e.Use(func(c *Context) {
+			c.Writer.Header().Set("X-Static-Missing", root)
+		})
+	}
+
 	if !strings.HasPrefix(relativePath, "/") {
 		relativePath = "/" + relativePath
 	}
-	if _, err := os.Stat(root); os.IsNotExist(err) {
-		panic("Static file root directory does not exist: " + root)
-	}
+
 	handler := http.StripPrefix(relativePath, http.FileServer(http.Dir(root)))
 	urlPattern := relativePath + "/*filepath"
 	e.GET(urlPattern, func(c *Context) {

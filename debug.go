@@ -21,3 +21,7 @@ func DebugPrint(format string, v ...any) {
 		log.Printf("[DEBUG] "+format, v...)
 	}
 }
+
+func SetDebugMode(b bool) {
+	DebugMode = b
+}

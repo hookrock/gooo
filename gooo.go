@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // 定义一个Hanlder 自定义处理函数类型
@@ -11,10 +12,15 @@ type HandlerFunc func(c *Context)
 
 type Engine struct {
 	*RouterGroup
-	router   *router
-	groups   []*RouterGroup
-	config   *Config
-	template *TemplateEngine // 替换原有字段
+	router         *router
+	groups         []*RouterGroup
+	config         *Config
+	template       *TemplateEngine // 替换原有字段
+	sessionManager *SessionManager
+}
+
+func (e *Engine) GetSessionManager() *SessionManager {
+	return e.sessionManager
 }
 
 func New() *Engine {
@@ -26,7 +32,8 @@ func New() *Engine {
 			TemplatePath: "web/templates",
 			Extension:    ".tmpl",
 		},
-		template: NewTemplateEngine(),
+		template:       NewTemplateEngine(),
+		sessionManager: NewSessionManager(NewMemoryStore(30 * time.Minute)),
 	}
 	engine.RouterGroup = &RouterGroup{engine: engine}
 	// 加载静态文件
@@ -35,6 +42,12 @@ func New() *Engine {
 	pattern := filepath.Join(engine.config.TemplatePath, "*"+engine.config.Extension)
 	if err := engine.template.Load(pattern); err != nil && IsDebugMode() {
 		DebugPrint("模板加载警告: %v", err) // 调试模式下打印警告
+	}
+
+	engine.sessionManager.CookieOpts = CookieConfig{
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   86400,
 	}
 	return engine
 }

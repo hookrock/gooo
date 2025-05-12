@@ -93,3 +93,30 @@ func TestMiddlewareAbort(t *testing.T) {
 		t.Errorf("expected status 403, got %d", w.Code)
 	}
 }
+
+func TestStaticDirectoryCheck(t *testing.T) {
+	// 测试正常情况
+	t.Run("ValidPath", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Error("不应触发panic")
+			}
+		}()
+		engine := New()
+		engine.Static("/static", "testdata/valid_static")
+	})
+
+	// 测试开发环境异常路径
+	t.Run("DevEnvInvalidPath", func(t *testing.T) {
+		SetDebugMode(true)
+		defer SetDebugMode(false)
+
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("开发环境应触发panic")
+			}
+		}()
+		engine := New()
+		engine.Static("/static", "non_existing_dir")
+	})
+}

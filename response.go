@@ -41,10 +41,10 @@ func (r *Response) HTML(code int, html string) {
 }
 
 // response.go 需新增的方法
-func (r *Response) String(code int, format string, values ...interface{}) {
+func (r *Response) String(code int, format string, values ...any) {
 	r.SetContentType("text/plain")
 	r.Status(code)
-	r.Writer.Write([]byte(fmt.Sprintf(format, values...)))
+	r.Writer.Write(fmt.Appendf(nil, format, values...))
 }
 
 func (r *Response) Data(code int, data []byte) {

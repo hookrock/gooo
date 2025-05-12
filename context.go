@@ -19,11 +19,14 @@ type Context struct {
 	Method string
 	Params map[string]string // 路由参数
 	// 中间件数据
-	keys     map[string]interface{}
+	keys     map[string]any
 	handlers []HandlerFunc // 中间件链
 	index    int           // 当前执行的中间件索引
 	aborted  bool          // 是否已终止
 	engine   *Engine
+
+	Session   map[string]any
+	SessionID string
 }
 
 // 构造函数
@@ -35,26 +38,26 @@ func newContext(w http.ResponseWriter, req *http.Request) *Context {
 		Path:     req.URL.Path,
 		Method:   req.Method,
 		Params:   make(map[string]string),
-		keys:     make(map[string]interface{}),
+		keys:     make(map[string]any),
 	}
 }
 
 // Set 存储中间件数据
-func (c *Context) Set(key string, value interface{}) {
+func (c *Context) Set(key string, value any) {
 	if c.keys == nil {
-		c.keys = make(map[string]interface{})
+		c.keys = make(map[string]any)
 	}
 	c.keys[key] = value
 }
 
 // Get 获取中间件数据
-func (c *Context) Get(key string) (value interface{}, exists bool) {
+func (c *Context) Get(key string) (value any, exists bool) {
 	value, exists = c.keys[key]
 	return
 }
 
 // MustGet 获取中间件数据，不存在则panic
-func (c *Context) MustGet(key string) interface{} {
+func (c *Context) MustGet(key string) any {
 	if value, exists := c.Get(key); exists {
 		return value
 	}
@@ -116,12 +119,12 @@ func (c *Context) GetStatusCode() int {
 }
 
 // 设置响应内容 JSON
-func (c *Context) JSON(code int, obj interface{}) {
+func (c *Context) JSON(code int, obj any) {
 	c.Response.JSON(code, obj)
 }
 
 // 设置响应内容 String
-func (c *Context) String(code int, format string, values ...interface{}) {
+func (c *Context) String(code int, format string, values ...any) {
 	c.Response.String(code, format, values...)
 }
 
@@ -162,5 +165,28 @@ func (c *Context) Next() {
 		c.index++
 		handler := c.handlers[c.index]
 		handler(c)
+	}
+}
+
+func (c *Context) StartSession() {
+	// 将会话初始化逻辑转移到上下文
+	if c.Session == nil {
+		mgr := c.engine.GetSessionManager()
+		c.Session, c.SessionID = mgr.Create(c.Writer, c.Req)
+	}
+}
+
+// 添加会话操作方法
+func (c *Context) RenewSession() {
+	if mgr := c.engine.GetSessionManager(); mgr != nil {
+		mgr.Renew(c.SessionID)
+	}
+}
+
+func (c *Context) DestroySession() {
+	if mgr := c.engine.GetSessionManager(); mgr != nil {
+		mgr.DestroySession(c.Writer, c.SessionID)
+		c.Session = nil
+		c.SessionID = ""
 	}
 }

@@ -18,3 +18,11 @@ func resolveAddress(addr []string) string {
 		panic("too many parameters")
 	}
 }
+
+func isDirExist(path string) bool {
+	fi, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return fi.IsDir()
+}
